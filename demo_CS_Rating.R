@@ -19,37 +19,74 @@
 
 mean_Ability = 200 # the average true gamer ability
 std_Ability = 25
+abilityForAdvantage = 25 #how many Ability points mean a "decided advantage"
 
 gameType = 'gun_fight' # or 'block_on_hill', 'block_in_valley', or others
 gamers_each_side = 5
 number_total_gamers = 1000
-number_games_played = 100000
+number_games_played = 10000
 
-
-
-
-
-
-
-playGame<-function(gamerAbilitiesTeam1,gamerAbilitiesTeam2,gameType){
-  if(gameType == 'gun_fight'){
-    
-    #the
-  }else{
-    print('no game type declared, just flip a coin...')
-    return()
-  }
-  
-  
+## here's a rernormalized ERF
+erfRenorm <- function(x){
+  return(pnorm(x * sqrt(2)))
 }
-
-
 
 mod<-function(x,m){
   t1<-floor(x/m)
   return(x-t1*m)
 }
 
+
+playGame<-function(gamerAbilitiesTeam1,gamerAbilitiesTeam2,gameType){
+  if(gameType == 'gun_fight'){  ########GUN FIGHT STYLE GAME
+    #everyone starts out alive:
+    team1_living = rep(1,gamers_each_side)
+    team2_living = rep(1,gamers_each_side)
+    #Then everyone lines up and takes turns shooting:
+    while(sum(team1_living)>0 && sum(team2_living)>0){
+      #all the living players take a shot at once:
+      killedTeam1Player = 0
+      killedTeam2Player = 0 #no one dead yet
+      for(shooter in 1:gamers_each_side){
+        if(team1_living[shooter] == 1){
+          #pick an opponent (KLUDGEY - FIX)
+          opponent = 0
+          while(opponent == 0){
+            lookFor = sample(1:gamers_each_side,1)
+            if(team1_living[lookFor] == 1){opponent=lookFor}
+          }
+          #now take the shot!
+          skillAdvantage = gamerAbilitiesTeam1[shooter]-gamerAbilitiesTeam2[opponent]
+          if(runif(1, 0.0, 1.0)>erfRenorm(skillAdvantage/abilityForAdvantage)){killedTeam2Player = opponent}
+        }
+      }
+      for(shooter in 1:gamers_each_side){
+        if(team2_living[shooter] == 1){
+          #pick an opponent (KLUDGEY - FIX)
+          opponent = 0
+          while(opponent == 0){
+            lookFor = sample(1:gamers_each_side,1)
+            if(team2_living[lookFor] == 1){opponent=lookFor}
+          }
+          #now take the shot!
+          skillAdvantage = gamerAbilitiesTeam2[shooter]-gamerAbilitiesTeam1[opponent]
+          if(runif(1, 0.0, 1.0)>erfRenorm(skillAdvantage/abilityForAdvantage)){killedTeam1Player = opponent}
+        }
+      }
+      
+      #now kill off the players who were hit
+      if(killedTeam1Player){team1_living[killedTeam1Player] = 0}
+      if(killedTeam2Player){team1_living[killedTeam2Player] = 0}
+      
+    }
+    #someone is all dead, figure out who's alive; they won
+    winner = if (sum(team1_living)>sum(team2_living)) 1 else 2
+    return(winner)
+  }else{ ########### NO GAME DEFINITION = COIN FLIP
+    print('no game type declared, just flip a coin...')
+    return(sample(1:2,1))
+  }
+}
 
 #set all the gamer's intrinsic abilities
 gamer_Ability <- rnorm(number_total_gamers, mean=mean_Ability, sd=std_Ability)
@@ -77,7 +114,7 @@ for (gamenum in 1:number_games_played){
   #pick some gamers according to a rule on their skill, group into teams (CURRENTLY TOTALLY RANDOM)
   gamerIndicesAll = sample(1:number_total_gamers,gamers_each_side*2)
   gamerIndicesTeam1 = gamerIndicesAll[1:gamers_each_side]
-  gamerIndicesTeam2 = gamerIndicesAll[gamers_each_side+1:gamers_each_side*2]
+  gamerIndicesTeam2 = gamerIndicesAll[(gamers_each_side+1):(gamers_each_side*2)]
   gamerAbilitiesTeam1 = gamer_Ability[gamerIndicesTeam1]
   gamerAbilitiesTeam2 = gamer_Ability[gamerIndicesTeam2]
   #put these gamers together in a game and record who wins and the current gamer scores
@@ -91,13 +128,15 @@ for (gamenum in 1:number_games_played){
     
   gameresults <- rbind(gameresults, c(winSide, gamerSumTeam1, gamerProductTeam1, gamerSumTeam2, gamerProductTeam2))
 
-  
   #change the gamer scores based on who won (NOT YET IMPLEMENTED)
   
 }
 
+#now let's look at the results of these games, and see which sort of "scoring" is most important
+
+#perhaps make some regression fits to find the best predictor
+
+#play with it some!
 
 
-
-
-print (2+2)
+print ('computations over')
